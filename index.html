@@ -140,7 +140,7 @@
 
                 <div class="pt-6 border-t border-brand-border">
                     <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
-                        <span>💵</span> Financial Capital Summary (Quantity × Cost Price)
+                        <span>💵</span> Financial Capital Summary (Quantity &times; Cost Price)
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-brand-card/90 border border-brand-border rounded-2xl p-5 shadow-lg">
@@ -167,7 +167,7 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brand-border pb-6">
                     <div>
                         <h2 class="text-3xl font-extrabold text-white">Stock & Inventory Catalog</h2>
-                        <p class="text-slate-400 text-sm mt-1">Sorted alphabetically (A-Z) with low stock alerts ($\le 2$ units).</p>
+                        <p class="text-slate-400 text-sm mt-1">Sorted alphabetically (A-Z) with low stock alerts (&le; 2 units).</p>
                     </div>
                     
                     <div class="flex flex-wrap gap-2 bg-brand-card p-1.5 rounded-xl border border-brand-border">
@@ -240,7 +240,7 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-brand-border pb-6">
                     <div>
                         <h2 class="text-3xl font-extrabold text-white">Sales & Profit Analytics</h2>
-                        <p class="text-slate-400 text-sm mt-1">Tracks total revenue and net profits computed as $(Selling - Buying) \times Quantity$.</p>
+                        <p class="text-slate-400 text-sm mt-1">Tracks revenue and net profits computed as (Selling - Buying) &times; Quantity.</p>
                     </div>
 
                     <div class="flex bg-brand-card p-1.5 rounded-xl border border-brand-border">
@@ -270,6 +270,7 @@
                                 <th class="py-3 px-4">Qty Sold</th>
                                 <th class="py-3 px-4">Selling Price</th>
                                 <th class="py-3 px-4 text-emerald-400">Profit Made</th>
+                                <th class="py-3 px-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="sales-table-body" class="divide-y divide-brand-border"></tbody>
@@ -309,7 +310,7 @@
                 <div class="space-y-3 text-xs text-slate-300">
                     <div class="bg-brand-dark p-3 rounded-xl border border-brand-border"><b>1. Stock View:</b> Filter by TVS King, Hora RE, or Boxer. Expand rows to Sell, Restock, Edit, or Delete parts.</div>
                     <div class="bg-brand-dark p-3 rounded-xl border border-brand-border"><b>2. Adding Parts:</b> Click "➕ Add Item" and fill in all mandatory fields to save directly to Firebase.</div>
-                    <div class="bg-brand-dark p-3 rounded-xl border border-brand-border"><b>3. Analytics:</b> Click "📊 Analytics" to track revenue generated and net profits over time.</div>
+                    <div class="bg-brand-dark p-3 rounded-xl border border-brand-border"><b>3. Analytics & Returns:</b> Click "📊 Analytics" to track revenue and profits. You can edit past sales prices or process returns directly from the sales ledger.</div>
                 </div>
             </div>
 
@@ -383,17 +384,16 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // REPLACE WITH YOUR FIREBASE CONFIGURATION
-       const firebaseConfig = {
-  apiKey: "AIzaSyDKSJJILpEweO7DzCbr3l4hmZxNHa6DaRg",
-  authDomain: "netsastock.firebaseapp.com",
-  projectId: "netsastock",
-  storageBucket: "netsastock.firebasestorage.app",
-  messagingSenderId: "607024310954",
-  appId: "1:607024310954:web:ca54c8f700307c5275fed3",
-  measurementId: "G-C08F0PHZK4"
-};
-
+        // --- EXACT FIREBASE CONFIGURATION UNTOUCHED ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDKSJJILpEweO7DzCbr3l4hmZxNHa6DaRg",
+            authDomain: "netsastock.firebaseapp.com",
+            projectId: "netsastock",
+            storageBucket: "netsastock.firebasestorage.app",
+            messagingSenderId: "607024310954",
+            appId: "1:607024310954:web:ca54c8f700307c5275fed3",
+            measurementId: "G-C08F0PHZK4"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -501,61 +501,69 @@
 
         window.filterCategory = (cat) => {
             activeCategory = cat;
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if(btn.id.startsWith('tab-')) btn.classList.remove('active');
+            });
             const activeTab = document.getElementById(`tab-${cat}`);
-            if (activeTab) activeTab.classList.add('active');
+            if(activeTab) activeTab.classList.add('active');
             renderInventory();
         };
 
         window.renderInventory = () => {
             const container = document.getElementById('inventory-container');
-            const searchVal = document.getElementById('search-input').value.toLowerCase();
-
+            const searchVal = (document.getElementById('search-input')?.value || '').toLowerCase();
+            
             let filtered = localInventory.filter(item => {
-                const matchesSearch = item.name.toLowerCase().includes(searchVal) || 
-                                      item.location.toLowerCase().includes(searchVal);
-                if (activeCategory === 'ALL') return matchesSearch;
-                if (activeCategory === 'BABAJ') return matchesSearch && (item.type === 'TVS King' || item.type === 'Hora RE');
-                return matchesSearch && item.type === activeCategory;
+                const matchesCat = activeCategory === 'ALL' || 
+                                   (activeCategory === 'BABAJ' && (item.type === 'TVS King' || item.type === 'Hora RE')) ||
+                                   item.type === activeCategory;
+                const matchesSearch = (item.name || '').toLowerCase().includes(searchVal) ||
+                                      (item.location || '').toLowerCase().includes(searchVal) ||
+                                      (item.type || '').toLowerCase().includes(searchVal);
+                return matchesCat && matchesSearch;
             });
 
             if (filtered.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-slate-500 bg-brand-card rounded-2xl border border-brand-border">No matching spare parts found.</div>`;
+                container.innerHTML = `<div class="bg-brand-card border border-brand-border rounded-2xl p-8 text-center text-slate-400">No spare parts match your filter or search query.</div>`;
                 return;
             }
 
             container.innerHTML = filtered.map(item => {
                 const isLowStock = item.quantity <= 2;
                 return `
-                    <div class="bg-brand-card border ${isLowStock ? 'border-brand-danger/60 bg-red-950/10' : 'border-brand-border'} rounded-2xl p-4 transition shadow-md">
-                        <div class="flex items-center justify-between cursor-pointer" onclick="toggleMoreInfo('${item.id}')">
-                            <div class="flex items-center gap-3">
-                                <span class="px-2.5 py-1 rounded-md text-xs font-bold ${item.type === 'BOXER' ? 'bg-indigo-900/60 text-indigo-300' : 'bg-purple-900/60 text-purple-300'}">
-                                    ${item.type}
-                                </span>
-                                <h4 class="font-bold text-white text-lg">${item.name}</h4>
-                                ${isLowStock ? `<span class="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">⚠️ Low Stock (${item.quantity})</span>` : ''}
+                    <div class="bg-brand-card border ${isLowStock ? 'border-red-500/50' : 'border-brand-border'} rounded-2xl p-5 shadow-lg space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="text-lg font-bold text-white">${item.name}</h4>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-500/30">${item.type}</span>
+                                    ${isLowStock ? '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-950 text-red-400 border border-red-500/40">⚠️ Low Stock</span>' : ''}
+                                </div>
+                                <p class="text-xs text-slate-400 mt-0.5">Bin Location: <span class="text-slate-200 font-semibold">${item.location}</span></p>
                             </div>
-                            <div class="flex items-center gap-6">
-                                <span class="text-sm font-medium text-slate-400">Qty: <b class="text-white">${item.quantity}</b></span>
-                                <span class="text-sm font-bold text-emerald-400">$${parseFloat(item.sellingPrice).toFixed(2)}</span>
-                                <span id="arrow-${item.id}" class="text-slate-500 text-xs transition-transform">▼</span>
+                            <div class="flex items-center gap-4 text-right">
+                                <div>
+                                    <p class="text-xs text-slate-400">Stock Qty</p>
+                                    <p class="text-xl font-black text-white">${item.quantity}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-400">Buying / Selling</p>
+                                    <p class="text-sm font-bold text-slate-200">$${Number(item.buying).toFixed(2)} / <span class="text-emerald-400">$${Number(item.selling).toFixed(2)}</span></p>
+                                </div>
                             </div>
                         </div>
 
-                        <div id="drawer-${item.id}" class="hidden pt-4 mt-4 border-t border-brand-border/60 space-y-4">
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-brand-dark/50 p-3 rounded-xl">
-                                <div><span class="text-slate-500 block">Bin Location:</span> <b class="text-slate-200">${item.location}</b></div>
-                                <div><span class="text-slate-500 block">Buying Price (Cost):</span> <b class="text-slate-200">$${parseFloat(item.buyingPrice).toFixed(2)}</b></div>
-                                <div><span class="text-slate-500 block">Margin per Unit:</span> <b class="text-emerald-400">$${(item.sellingPrice - item.buyingPrice).toFixed(2)}</b></div>
-                                <div><span class="text-slate-500 block">Total Item Value:</span> <b class="text-purple-400">$${(item.quantity * item.buyingPrice).toFixed(2)}</b></div>
+                        <div class="pt-3 border-t border-brand-border flex flex-wrap items-center gap-3">
+                            <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+                                <input type="number" id="sell-qty-${item.id}" min="1" max="${item.quantity}" value="1" class="w-16 bg-brand-dark border border-brand-border rounded-xl px-3 py-2 text-sm text-slate-200 text-center">
+                                <input type="number" step="0.01" id="sell-price-${item.id}" value="${item.selling}" title="Custom Selling Price per customer" class="w-24 bg-brand-dark border border-brand-border rounded-xl px-3 py-2 text-sm text-emerald-400 text-center font-bold" placeholder="Price">
+                                <button onclick="executeSell('${item.id}')" class="flex-1 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-white text-xs transition shadow-md">
+                                    🛒 Sell Item
+                                </button>
                             </div>
-
-                            <div class="flex flex-wrap gap-2 pt-1">
-                                <button onclick="handleSellPrompt('${item.id}', '${item.name}', ${item.quantity}, ${item.buyingPrice}, ${item.sellingPrice})" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition">🛒 Sell</button>
-                                <button onclick="handleRestockPrompt('${item.id}', ${item.quantity})" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition">📦 Restock</button>
-                                <button onclick="openEditModal('${item.id}')" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold text-slate-200 transition">✏️ Edit</button>
-                                <button onclick="handleDeleteItem('${item.id}')" class="px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-800/60 border border-red-500/30 text-xs font-bold text-red-300 transition">🗑️ Delete</button>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openEditModal('${item.id}')" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">✏️ Edit</button>
+                                <button onclick="deleteItem('${item.id}')" class="px-3 py-2 rounded-xl bg-red-950/40 border border-red-500/30 hover:bg-red-900/60 text-xs font-semibold text-red-300 transition">🗑️ Delete</button>
                             </div>
                         </div>
                     </div>
@@ -563,124 +571,178 @@
             }).join('');
         };
 
-        window.toggleMoreInfo = (id) => {
-            const drawer = document.getElementById(`drawer-${id}`);
-            const arrow = document.getElementById(`arrow-${id}`);
-            if (drawer) {
-                drawer.classList.toggle('hidden');
-                arrow.style.transform = drawer.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-            }
-        };
-
-        function calculateCapital() {
-            let tvsCap = 0, horaCap = 0, boxerCap = 0;
-            localInventory.forEach(item => {
-                const val = (Number(item.quantity) || 0) * (Number(item.buyingPrice) || 0);
-                if (item.type === 'TVS King') tvsCap += val;
-                else if (item.type === 'Hora RE') horaCap += val;
-                else if (item.type === 'BOXER') boxerCap += val;
-            });
-
-            document.getElementById('cap-tvs').innerText = `$${tvsCap.toFixed(2)}`;
-            document.getElementById('cap-hora').innerText = `$${horaCap.toFixed(2)}`;
-            document.getElementById('cap-boxer').innerText = `$${boxerCap.toFixed(2)}`;
-            document.getElementById('cap-total').innerText = `$${(tvsCap + horaCap + boxerCap).toFixed(2)}`;
-        }
-
         window.handleAddItem = async (e) => {
             e.preventDefault();
-            const newItem = {
-                name: document.getElementById('item-name').value.trim(),
-                type: document.getElementById('item-type').value,
-                location: document.getElementById('item-location').value.trim(),
-                buyingPrice: parseFloat(document.getElementById('item-buying').value),
-                sellingPrice: parseFloat(document.getElementById('item-selling').value),
-                quantity: parseInt(document.getElementById('item-quantity').value, 10),
-                createdAt: serverTimestamp()
-            };
+            const name = document.getElementById('item-name').value.trim();
+            const type = document.getElementById('item-type').value;
+            const location = document.getElementById('item-location').value.trim();
+            const buying = parseFloat(document.getElementById('item-buying').value);
+            const selling = parseFloat(document.getElementById('item-selling').value);
+            const quantity = parseInt(document.getElementById('item-quantity').value);
 
-            await addDoc(collection(db, "inventory"), newItem);
-            document.getElementById('add-item-form').reset();
-            switchView('inventory-page');
-        };
-
-        window.handleSellPrompt = async (id, name, currentQty, buyingPrice, sellingPrice) => {
-            const input = prompt(`Selling "${name}". Enter quantity sold:`, "1");
-            if (!input) return;
-            const qtyToSell = parseInt(input, 10);
-
-            if (isNaN(qtyToSell) || qtyToSell <= 0) {
-                alert("Please enter a valid quantity.");
-                return;
-            }
-            if (qtyToSell > currentQty) {
-                alert("Insufficient stock quantity!");
-                return;
-            }
-
-            await updateDoc(doc(db, "inventory", id), { quantity: currentQty - qtyToSell });
-
-            const netProfit = (sellingPrice - buyingPrice) * qtyToSell;
-            await addDoc(collection(db, "sales"), {
-                itemId: id,
-                name: name,
-                qtySold: qtyToSell,
-                sellingPrice: sellingPrice,
-                buyingPrice: buyingPrice,
-                profitMade: netProfit,
-                totalRevenue: sellingPrice * qtyToSell,
-                timestamp: new Date().toISOString()
-            });
-        };
-
-        window.handleRestockPrompt = async (id, currentQty) => {
-            const input = prompt("Enter quantity to add to stock:", "5");
-            if (!input) return;
-            const qtyToAdd = parseInt(input, 10);
-            if (isNaN(qtyToAdd) || qtyToAdd <= 0) return;
-
-            await updateDoc(doc(db, "inventory", id), { quantity: currentQty + qtyToAdd });
-        };
-
-        window.handleDeleteItem = async (id) => {
-            if (confirm("Are you sure you want to permanently delete this part from inventory?")) {
-                await deleteDoc(doc(db, "inventory", id));
+            try {
+                await addDoc(collection(db, "inventory"), {
+                    name, type, location, buying, selling, quantity, createdAt: serverTimestamp()
+                });
+                document.getElementById('add-item-form').reset();
+                switchView('inventory-page');
+            } catch (err) {
+                alert("Error adding item: " + err.message);
             }
         };
 
         window.openEditModal = (id) => {
             const item = localInventory.find(i => i.id === id);
             if (!item) return;
-
             document.getElementById('edit-id').value = item.id;
             document.getElementById('edit-name').value = item.name;
             document.getElementById('edit-type').value = item.type;
             document.getElementById('edit-location').value = item.location;
-            document.getElementById('edit-buying').value = item.buyingPrice;
-            document.getElementById('edit-selling').value = item.sellingPrice;
+            document.getElementById('edit-buying').value = item.buying;
+            document.getElementById('edit-selling').value = item.selling;
             document.getElementById('edit-quantity').value = item.quantity;
-
-            document.getElementById('edit-modal').classList.remove('hidden');
-            document.getElementById('edit-modal').classList.add('flex');
+            
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
         };
 
         window.closeEditModal = () => {
-            document.getElementById('edit-modal').classList.add('hidden');
-            document.getElementById('edit-modal').classList.remove('flex');
+            const modal = document.getElementById('edit-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         };
 
         window.handleSaveEdit = async (e) => {
             e.preventDefault();
             const id = document.getElementById('edit-id').value;
-            await updateDoc(doc(db, "inventory", id), {
-                name: document.getElementById('edit-name').value.trim(),
-                type: document.getElementById('edit-type').value,
-                location: document.getElementById('edit-location').value.trim(),
-                buyingPrice: parseFloat(document.getElementById('edit-buying').value),
-                sellingPrice: parseFloat(document.getElementById('edit-selling').value),
-                quantity: parseInt(document.getElementById('edit-quantity').value, 10)
+            try {
+                await updateDoc(doc(db, "inventory", id), {
+                    name: document.getElementById('edit-name').value.trim(),
+                    type: document.getElementById('edit-type').value,
+                    location: document.getElementById('edit-location').value.trim(),
+                    buying: parseFloat(document.getElementById('edit-buying').value),
+                    selling: parseFloat(document.getElementById('edit-selling').value),
+                    quantity: parseInt(document.getElementById('edit-quantity').value)
+                });
+                closeEditModal();
+            } catch (err) {
+                alert("Error updating item: " + err.message);
+            }
+        };
+
+        window.deleteItem = async (id) => {
+            if (confirm("Are you sure you want to delete this spare part from inventory?")) {
+                try {
+                    await deleteDoc(doc(db, "inventory", id));
+                } catch (err) {
+                    alert("Error deleting item: " + err.message);
+                }
+            }
+        };
+
+        window.executeSell = async (id) => {
+            const item = localInventory.find(i => i.id === id);
+            if (!item) return;
+
+            const qtyInput = document.getElementById(`sell-qty-${id}`);
+            const priceInput = document.getElementById(`sell-price-${id}`);
+            
+            const qtyToSell = parseInt(qtyInput.value);
+            const customSellingPrice = parseFloat(priceInput.value);
+
+            if (isNaN(qtyToSell) || qtyToSell <= 0 || qtyToSell > item.quantity) {
+                alert("Please enter a valid sale quantity.");
+                return;
+            }
+
+            if (isNaN(customSellingPrice) || customSellingPrice < 0) {
+                alert("Please enter a valid selling price.");
+                return;
+            }
+
+            const netProfit = (customSellingPrice - Number(item.buying)) * qtyToSell;
+
+            try {
+                await updateDoc(doc(db, "inventory", id), {
+                    quantity: item.quantity - qtyToSell
+                });
+
+                await addDoc(collection(db, "sales"), {
+                    itemId: item.id,
+                    itemName: item.name,
+                    quantitySold: qtyToSell,
+                    buyingPrice: Number(item.buying),
+                    sellingPrice: customSellingPrice,
+                    totalRevenue: customSellingPrice * qtyToSell,
+                    netProfit: netProfit,
+                    timestamp: serverTimestamp(),
+                    dateString: new Date().toISOString()
+                });
+
+                alert(`Successfully sold ${qtyToSell} unit(s) of ${item.name}! Profit recorded: $${netProfit.toFixed(2)}`);
+            } catch (err) {
+                alert("Error processing sale: " + err.message);
+            }
+        };
+
+        window.processReturn = async (saleId) => {
+            const sale = localSales.find(s => s.id === saleId);
+            if (!sale) return;
+
+            if (confirm(`Process return for "${sale.itemName}" (${sale.quantitySold} units)? This will add stock back and reverse profit metrics.`)) {
+                try {
+                    const inventoryItem = localInventory.find(i => i.id === sale.itemId);
+                    if (inventoryItem) {
+                        await updateDoc(doc(db, "inventory", sale.itemId), {
+                            quantity: inventoryItem.quantity + sale.quantitySold
+                        });
+                    }
+
+                    await deleteDoc(doc(db, "sales", saleId));
+                    alert("Return processed successfully. Stock has been returned to inventory.");
+                } catch (err) {
+                    alert("Error processing return: " + err.message);
+                }
+            }
+        };
+
+        window.calculateCapital = () => {
+            let tvsCap = 0, horaCap = 0, boxerCap = 0;
+            localInventory.forEach(item => {
+                const itemCap = (Number(item.buying) || 0) * (Number(item.quantity) || 0);
+                if (item.type === 'TVS King') tvsCap += itemCap;
+                else if (item.type === 'Hora RE') horaCap += itemCap;
+                else if (item.type === 'BOXER') boxerCap += itemCap;
             });
-            closeEditModal();
+
+            document.getElementById('cap-tvs').innerText = `$${tvsCap.toFixed(2)}`;
+            document.getElementById('cap-hora').innerText = `$${horaCap.toFixed(2)}`;
+            document.getElementById('cap-boxer').innerText = `$${boxerCap.toFixed(2)}`;
+            document.getElementById('cap-total').innerText = `$${(tvsCap + horaCap + boxerCap).toFixed(2)}`;
+        };
+
+        window.renderTopSold = () => {
+            const listContainer = document.getElementById('top-sold-list');
+            const salesMap = {};
+
+            localSales.forEach(s => {
+                salesMap[s.itemName] = (salesMap[s.itemName] || 0) + (s.quantitySold || 0);
+            });
+
+            const sorted = Object.entries(salesMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            if (sorted.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-slate-400 italic">No sales recorded yet.</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = sorted.map(([name, count], index) => `
+                <div class="flex items-center justify-between bg-brand-dark/50 border border-brand-border rounded-xl p-3">
+                    <span class="text-xs font-bold text-white">#${index + 1} ${name}</span>
+                    <span class="text-xs font-black text-pink-400">${count} sold</span>
+                </div>
+            `).join('');
         };
 
         window.setSalesHorizon = (horizon) => {
@@ -692,12 +754,14 @@
             renderSalesAnalytics();
         };
 
-        function renderSalesAnalytics() {
-            const tableBody = document.getElementById('sales-table-body');
+        window.renderSalesAnalytics = () => {
+            const tbody = document.getElementById('sales-table-body');
             const now = new Date();
 
-            let filteredSales = localSales.filter(sale => {
-                const saleDate = new Date(sale.timestamp);
+            let filtered = localSales.filter(s => {
+                if (!s.timestamp && !s.dateString) return true;
+                const saleDate = s.timestamp ? s.timestamp.toDate() : new Date(s.dateString);
+                
                 if (salesHorizon === 'daily') {
                     return saleDate.toDateString() === now.toDateString();
                 } else if (salesHorizon === 'monthly') {
@@ -711,52 +775,82 @@
             let totalRev = 0;
             let totalProf = 0;
 
-            if (filteredSales.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500">No transaction history recorded for this period.</td></tr>`;
-            } else {
-                tableBody.innerHTML = filteredSales.map(s => {
-                    totalRev += (s.totalRevenue || 0);
-                    totalProf += (s.profitMade || 0);
-                    const formattedDate = new Date(s.timestamp).toLocaleDateString() + ' ' + new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                    return `
-                        <tr class="hover:bg-slate-800/30">
-                            <td class="py-3 px-4 font-bold text-white">${s.name}</td>
-                            <td class="py-3 px-4 text-xs text-slate-400">${formattedDate}</td>
-                            <td class="py-3 px-4">${s.qtySold}</td>
-                            <td class="py-3 px-4">$${parseFloat(s.sellingPrice).toFixed(2)}</td>
-                            <td class="py-3 px-4 font-bold text-emerald-400">+$${parseFloat(s.profitMade).toFixed(2)}</td>
-                        </tr>
-                    `;
-                }).join('');
-            }
+            filtered.forEach(s => {
+                totalRev += Number(s.totalRevenue) || 0;
+                totalProf += Number(s.netProfit) || 0;
+            });
 
             document.getElementById('sales-total-revenue').innerText = `$${totalRev.toFixed(2)}`;
             document.getElementById('sales-total-profit').innerText = `$${totalProf.toFixed(2)}`;
-        }
 
-        function renderTopSold() {
-            const container = document.getElementById('top-sold-list');
-            const totals = {};
-            localSales.forEach(s => { totals[s.name] = (totals[s.name] || 0) + s.qtySold; });
-
-            const sortedTop = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-            if (sortedTop.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic">No sales recorded yet.</p>`;
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 italic">No sales records found for this timeframe.</td></tr>`;
                 return;
             }
 
-            container.innerHTML = sortedTop.map(([name, qty], index) => `
-                <div class="flex items-center justify-between bg-brand-dark/60 border border-brand-border/50 rounded-xl px-4 py-2 text-xs">
-                    <div class="flex items-center gap-2">
-                        <span class="font-extrabold text-pink-400">#${index + 1}</span>
-                        <span class="font-semibold text-slate-200">${name}</span>
-                    </div>
-                    <span class="font-bold text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-500/20">${qty} sold</span>
-                </div>
-            `).join('');
-        }
+            tbody.innerHTML = filtered.map(s => {
+                const dateStr = s.timestamp ? s.timestamp.toDate().toLocaleDateString() : new Date(s.dateString).toLocaleDateString();
+                return `
+                    <tr class="hover:bg-brand-dark/30 transition">
+                        <td class="py-3 px-4 font-semibold text-white">${s.itemName}</td>
+                        <td class="py-3 px-4 text-slate-400">${dateStr}</td>
+                        <td class="py-3 px-4 font-bold text-slate-200">${s.quantitySold}</td>
+                        <td class="py-3 px-4 text-slate-300">
+                            <span id="display-price-${s.id}">$${Number(s.sellingPrice).toFixed(2)}</span>
+                            <div id="edit-price-box-${s.id}" class="hidden flex items-center gap-1 mt-1">
+                                <input type="number" step="0.01" id="input-new-price-${s.id}" value="${s.sellingPrice}" class="w-20 bg-brand-dark border border-brand-border rounded px-2 py-1 text-xs text-white">
+                                <button onclick="saveSalePriceEdit('${s.id}')" class="px-2 py-1 bg-indigo-600 text-white rounded text-[10px] font-bold">Save</button>
+                                <button onclick="toggleEditSalePrice('${s.id}')" class="px-2 py-1 bg-slate-700 text-slate-300 rounded text-[10px]">✕</button>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 font-black text-emerald-400">+$${Number(s.netProfit).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-right space-x-1">
+                            <button onclick="toggleEditSalePrice('${s.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-950/50 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-900/60 text-[11px] font-semibold transition">✏️ Edit Price</button>
+                            <button onclick="processReturn('${s.id}')" class="px-2.5 py-1 rounded-lg bg-orange-950/50 border border-orange-500/30 text-orange-300 hover:bg-orange-900/60 text-[11px] font-semibold transition">↩️ Return</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        };
+
+        window.toggleEditSalePrice = (saleId) => {
+            const priceSpan = document.getElementById(`display-price-${saleId}`);
+            const editBox = document.getElementById(`edit-price-box-${saleId}`);
+            if (editBox.classList.contains('hidden')) {
+                editBox.classList.remove('hidden');
+                priceSpan.classList.add('hidden');
+            } else {
+                editBox.classList.add('hidden');
+                priceSpan.classList.remove('hidden');
+            }
+        };
+
+        window.saveSalePriceEdit = async (saleId) => {
+            const newPriceInput = document.getElementById(`input-new-price-${saleId}`);
+            const newSellingPrice = parseFloat(newPriceInput.value);
+
+            if (isNaN(newSellingPrice) || newSellingPrice < 0) {
+                alert("Please enter a valid selling price.");
+                return;
+            }
+
+            const sale = localSales.find(s => s.id === saleId);
+            if (!sale) return;
+
+            const newTotalRevenue = newSellingPrice * sale.quantitySold;
+            const newNetProfit = (newSellingPrice - Number(sale.buyingPrice)) * sale.quantitySold;
+
+            try {
+                await updateDoc(doc(db, "sales", saleId), {
+                    sellingPrice: newSellingPrice,
+                    totalRevenue: newTotalRevenue,
+                    netProfit: newNetProfit
+                });
+                alert("Sale price updated successfully! Analytics refreshed.");
+            } catch (err) {
+                alert("Error updating sale price: " + err.message);
+            }
+        };
     </script>
 </body>
 </html>
