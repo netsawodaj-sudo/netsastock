@@ -385,13 +385,18 @@
 
         // REPLACE WITH YOUR FIREBASE CONFIGURATION
        const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDKSJJILpEweO7DzCbr3l4hmZxNHa6DaRg",
+  authDomain: "netsastock.firebaseapp.com",
+  projectId: "netsastock",
+  storageBucket: "netsastock.firebasestorage.app",
+  messagingSenderId: "607024310954",
+  appId: "1:607024310954:web:ca54c8f700307c5275fed3",
+  measurementId: "G-C08F0PHZK4"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
